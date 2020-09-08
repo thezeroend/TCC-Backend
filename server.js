@@ -33,7 +33,7 @@ mysql.conexao.connect((err) => {
 
 	app.listen(port);
 
-	console.log('API server inciado na porta: ' + port);
+	console.log('API server iniciado na porta: ' + port);
 })
 
 
