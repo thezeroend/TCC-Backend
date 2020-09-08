@@ -23,7 +23,7 @@ mysql.conexao.connect((err) => {
 	app.use(bodyParser.json());
 
 	//Importa as rotas
-	var routes = require('./api/routes/faceRoutes');
+	var routes = require('./api/routes/allRoutes');
 	routes(app);
 
 	//Retorno 404
