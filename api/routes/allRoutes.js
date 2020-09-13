@@ -10,6 +10,8 @@ module.exports = function(app) {
 	    //.post(faceController.get_all)
 	    //.put(faceController.get_all)
 	    //.delete(faceController.get_all);
+	app.route('/face/teste')
+		.get(faceController.teste)
 
 	//User Routes
 	var userPrefix = '/user/';
