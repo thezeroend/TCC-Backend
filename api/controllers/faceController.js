@@ -3,63 +3,64 @@
 const faceapi = require('face-api.js');
 const canvas = require('canvas');
 const mysql = require('mysql');
+const { join } = require('path')
 
 const { Canvas, Image, ImageData } = canvas;
 
-//Images reference
-const REFERENCE_IMAGE = './src/fotos_teste/matheus.jpg'
-const QUERY_IMAGE = './src/fotos_teste/salomao.jpg'
+//Seta OPTIONS do faceapi
+faceapi.env.monkeyPatch({ Canvas, Image, ImageData });
+const TINY_FACE_OPTIONS = new faceapi.TinyFaceDetectorOptions()
 
-exports.get_all = function(req, res) {
-	mysql.conexao.query('SELECT * FROM tb_usuarios', (err, rows) => {
-		if (err) throw err
-			
-		res.json(rows);
-	})
+//Imagens de teste
+const REFERENCE_IMAGE = './data/fotos_teste/matheus.jpg'
+const QUERY_IMAGE = './data/fotos_teste/salomao.jpg'
+
+//Pasta 
+const rootPasta = join(__dirname, '../../')
+const dataPasta = join(rootPasta, 'data')
+const facesArquivo = 'faces.json'
+
+exports.getAll = function(req, res) {
+	res.header("Content-Type", "application/json")
+	const faces = join(dataPasta, facesArquivo)
+	delete require.cache[faces]
+	const result = require(faces)
+	res.send(result);
 }
 
 exports.teste = function (req, res) {
 	async function run() {
-		faceapi.env.monkeyPatch({ Canvas, Image, ImageData });
-		
-		const minConfidence = 0.5
-		const faceDetectionOptions = new faceapi.SsdMobilenetv1Options({ minConfidence })
-
-		await faceapi.nets.ssdMobilenetv1.loadFromDisk('./src/weights');
-		await faceapi.nets.faceRecognitionNet.loadFromDisk('./src/weights')
-		await faceapi.nets.faceLandmark68Net.loadFromDisk('./src/weights')
-
-		//var _referenceImage = new canvas.Image;
-
 		const referenceImage = await canvas.loadImage(REFERENCE_IMAGE)
 		const queryImage = await canvas.loadImage(QUERY_IMAGE)
+		console.log("Deu loading nas imagens")
 
-		const resultsRef = await faceapi.detectAllFaces(referenceImage, faceDetectionOptions)
+		const resultsRef = await faceapi.detectAllFaces(referenceImage, TINY_FACE_OPTIONS)
 			.withFaceLandmarks()
 			.withFaceDescriptors()
 
-		const resultsQuery = await faceapi.detectAllFaces(queryImage, faceDetectionOptions)
+		console.log("Carregou a 1 imagen")
+
+		const resultsQuery = await faceapi.detectAllFaces(queryImage, TINY_FACE_OPTIONS)
 			.withFaceLandmarks()
 			.withFaceDescriptors()
+
+		console.log("Carregou a 2 imagen")
 
 		const faceMatcher = new faceapi.FaceMatcher(resultsRef)
 
-		/*console.log("1");
-		console.log(resultsRef);
-		console.log("2");
-		console.log(resultsQuery); */
-
 		console.log("Primeira Foto Dados: " + JSON.stringify(faceMatcher));
+
 		const queryBestMatch = resultsQuery.map(res => {
 			const bestMatch = faceMatcher.findBestMatch(res.descriptor)
-			console.log("Comparação com a segunda: " + bestMatch.toString())
+			//console.log("Comparação com a segunda: " + JSON.stringify(bestMatch))
 		})
-		
+
 		res.json("Sucesso");
 	}
-	
-	run();
+
+	run()
 }
+
 
 
 

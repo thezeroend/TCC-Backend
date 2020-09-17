@@ -5,8 +5,8 @@ module.exports = function(app) {
 	var userController = require('../controllers/userController');
 
 	//Face Routes
-	app.route('/face/get-all')
-	    .get(faceController.get_all);
+	app.route('/face/getAll')
+	    .get(faceController.getAll);
 	    //.post(faceController.get_all)
 	    //.put(faceController.get_all)
 	    //.delete(faceController.get_all);
