@@ -3,6 +3,7 @@
 const faceapi = require('face-api.js');
 const canvas = require('canvas');
 const mysql = require('mysql');
+const { writeFileSync } = require('fs')
 const { join } = require('path')
 
 const { Canvas, Image, ImageData } = canvas;
@@ -26,6 +27,13 @@ exports.getAll = function(req, res) {
 	delete require.cache[faces]
 	const result = require(faces)
 	res.send(result);
+}
+
+exports.save = function(req, res) {
+	res.header("Content-Type", "application/json")
+	const content = JSON.stringify(req.body.faces)
+	writeFileSync(join(dataPasta, facesArquivo), content)
+	res.send('ok')
 }
 
 exports.teste = function (req, res) {
