@@ -6,10 +6,10 @@ var express = require('express'),
 	bodyParser = require('body-parser');
 
 mysql.conexao = mysql.createConnection({
-	host: 'dbreconhecimento.cdqphiqba2oe.sa-east-1.rds.amazonaws.com',
+	host: 'dbreconhecimentotcc.cdqphiqba2oe.sa-east-1.rds.amazonaws.com',
 	port: '3306',
-	user: 'admin',
-	password: 'admin1234',
+	user: 'goku',
+	password: '*DrgJX1wAk1M+kEw',
 	database: 'bd_facial'
 })
 
