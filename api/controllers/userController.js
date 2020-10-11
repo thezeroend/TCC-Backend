@@ -83,10 +83,23 @@ exports.listaUsers = function (req, res) {
 }
 
 exports.listaAcessos = function (req, res) {
+	var output = null;
 	mysql.conexao.query('SELECT A.tipo_acesso, A.dt_hora, U.ra, U.funcional, U.nome FROM tb_acessos as A INNER JOIN tb_acessos_usuarios as AC ON AC.id_acesso = A.id_acesso INNER JOIN tb_usuarios as U ON U.id_usuario = AC.id_usuario;', (err, rows) => {
 		if (err) throw err
 
-		res.json(rows);
+		output = rows;
+
+		output.forEach(out => {
+			if (out.tipo_acesso == 1) {
+				out.tipo_acesso = "Administrador";
+			} else {
+				out.tipo_acesso = "Catraca";
+			}
+
+			out.dt_hora = out.dt_hora.toISOString().replace(/T/, ' ').replace(/\..+/, '')
+		})
+		
+		res.json(output);		
 	})
 }
 
