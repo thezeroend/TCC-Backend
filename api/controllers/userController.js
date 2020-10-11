@@ -1,6 +1,12 @@
 'use strict';
 
 const mysql = require('mysql');
+const { writeFileSync } = require('fs');
+const { join } = require('path');
+
+const rootPasta = join(__dirname, '../../')
+const dataPasta = join(rootPasta, 'data')
+const tmpPasta = join(dataPasta, 'tmp')
 
 /*select * from tb_usuarios;
 select id_usuario from tb_usuarios;
@@ -66,4 +72,48 @@ exports.editUser = function(req, res) {
 
 		res.json('{status: 200, message:"Usuário editado com sucesso!"}');
 	})
+}
+
+exports.listaUsers = function (req, res) {
+	mysql.conexao.query('SELECT funcional, ra, nome FROM tb_usuarios', (err, rows) => {
+		if (err) throw err
+
+		res.json(rows);
+	})
+}
+
+exports.listaAcessos = function (req, res) {
+	mysql.conexao.query('SELECT A.tipo_acesso, A.dt_hora, U.ra, U.funcional, U.nome FROM tb_acessos as A INNER JOIN tb_acessos_usuarios as AC ON AC.id_acesso = A.id_acesso INNER JOIN tb_usuarios as U ON U.id_usuario = AC.id_usuario;', (err, rows) => {
+		if (err) throw err
+
+		res.json(rows);
+	})
+}
+
+exports.salvaFoto = function (req, res) {
+	let foto = req.body.foto;
+
+	let tmp_filename = Date.now()+".png";
+
+	let errors = 0;
+
+	const tmpFile = join(tmpPasta, tmp_filename)
+
+	foto = foto.replace(/^data:image\/png;base64,/, "")
+
+	writeFileSync(tmpFile, foto, {encoding: 'base64'}, function (err) {
+		errors++;
+	})
+
+	if (errors == 0) {
+		res.json({
+			status: 200,
+			nome_temp: tmp_filename
+		})
+	} else {
+		res.json({
+			status:403,
+			message: "Error"
+		})
+	}
 }

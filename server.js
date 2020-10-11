@@ -13,10 +13,16 @@ mysql.conexao = mysql.createConnection({
 	database: 'bd_facial'
 })
 
+app.use(bodyParser.json({ limit: "50mb" }))
+app.use(bodyParser.urlencoded({
+  extended: true,
+  limit: "50mb"
+}))
+
 mysql.conexao.connect((err) => {
     if (err) {
-        console.log('Erro ao conectar no banco de dados...', err)
-        return
+        //console.log('Erro ao conectar no banco de dados...', err)
+        //return
     }
     console.log('Conexão com o banco realizada!')
 

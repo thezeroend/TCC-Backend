@@ -13,6 +13,12 @@ module.exports = function(app) {
 	app.route('/face/save')
 		.post(faceController.save)
 
+	app.route('/face/train')
+		.post(faceController.train)
+
+	app.route('/face/recognize')
+		.post(faceController.recognize)
+
 	app.route('/face/teste')
 		.get(faceController.teste)
 
@@ -29,4 +35,13 @@ module.exports = function(app) {
 
 	app.route(userPrefix + 'editUser/:userId')
 		.put(userController.editUser);
+
+	app.route(userPrefix + 'listaUsers')
+		.get(userController.listaUsers);
+
+	app.route(userPrefix + 'listaAcessos')
+		.get(userController.listaAcessos);
+
+	app.route(userPrefix + 'salvaFoto')
+		.post(userController.salvaFoto)
 };
