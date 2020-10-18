@@ -23,7 +23,7 @@ const facesArquivo = 'faces.json'
 //Seta OPTIONS do faceapi
 faceapi.env.monkeyPatch({ Canvas, Image, ImageData });
 const TINY_FACE_OPTIONS = new faceapi.TinyFaceDetectorOptions({
-	scoreThreshold: 0.85
+	scoreThreshold: 0.5
 })
 
 exports.getAll = function(req, res) {
@@ -44,7 +44,6 @@ exports.save = function(req, res) {
 exports.recognize = function(req, res) {
 	async function recognize () {
 		let foto = req.body.foto;
-		console.log(foto)
 		let tmp_filename = Date.now()+".png";
 		let errors = 0;
 
@@ -68,59 +67,75 @@ exports.recognize = function(req, res) {
 				.withFaceLandmarks()
 				.withFaceDescriptors()
 
-			let resultadoFinal = null;
+			console.log(resultsRef.length)
+			if (resultsRef.length > 0) {
+				let resultadoFinal = null;
 
-			console.log(tmp_filename)
+				const faceMatcher = new faceapi.FaceMatcher(resultsRef)
 
-			const faceMatcher = new faceapi.FaceMatcher(resultsRef)
+				const faces = join(dataPasta, facesArquivo)
+				delete require.cache[faces]
+				const results = require(faces)
 
-			console.log("Carregou a 1 imagen")
-			console.log(faceMatcher)
+				results.forEach(fd => {
+					let descriptor = Object.keys(fd.descriptors[0].descriptor).map((key) => [fd.descriptors[0].descriptor[key]]);
+					
+					descriptor = new Float32Array(descriptor)
+					
+					const bestMatch = faceMatcher.findBestMatch(descriptor)
 
-			const faces = join(dataPasta, facesArquivo)
-			delete require.cache[faces]
-			const results = require(faces)
+					if (bestMatch._label == 'person 1') {
+						possiveis.push({
+							"ra": fd.ra,
+							"nome": "",
+							"label": true,
+							"possibilidade": bestMatch._distance
+						});
+					}
+					/*  else {
+						possiveis.push({
+							"ra": fd.ra,
+							"nome": "Nome de Teste",
+							"label": false,
+							"possibilidade": bestMatch._distance
+						});
+					} */
+				})
 
-			results.forEach(fd => {
-				let descriptor = Object.keys(fd.descriptors[0].descriptor).map((key) => [fd.descriptors[0].descriptor[key]]);
-				
-				descriptor = new Float32Array(descriptor)
-				
-				const bestMatch = faceMatcher.findBestMatch(descriptor)
+				console.log(possiveis)
+				possiveis.forEach(ps => {
+					if (ps.possibilidade == 0 || ps.possibilidade >= 0.3) {
+						resultadoFinal = ps;
+					}
+				})
 
-				if (bestMatch._label == 'person 1') {
-					possiveis.push({
-						"ra": fd.ra,
-						"nome": "Nome de Teste",
-						"label": true,
-						"possibilidade": bestMatch._distance
-					});
+				mysql.conexao.query('SELECT nome FROM tb_usuarios WHERE ra = "'+ resultadoFinal.ra +'"', 
+					(err, rows) => {
+					if (err) throw err
+
+					resultadoFinal.nome = rows[0].nome;
+					console.log("Dentro da consulta")
+					console.log(resultadoFinal)
+					res.json(resultadoFinal)	
+				})
+			} else {
+				console.log("teste")
+
+				let response = {
+					status: 404,
+					message: 'Não foi possivel encontrar rosto'
 				}
-				/*  else {
-					possiveis.push({
-						"ra": fd.ra,
-						"nome": "Nome de Teste",
-						"label": false,
-						"possibilidade": bestMatch._distance
-					});
-				} */
-			})
 
-			console.log(possiveis)
-			possiveis.forEach(ps => {
-				if (ps.possibilidade == 0 || ps.possibilidade >= 0.3) {
-					resultadoFinal = ps;
-				}
-			})
-
-			console.log(resultadoFinal)
-
-			res.json(resultadoFinal)
+				res.json(response)
+			}
 		} else {
-			//console.log("Deu Erro")
-			res.json("not ok")
+			let response = {
+				status: 400,
+				message: 'Não foi possivel encontrar rosto'
+			}
+			
+			res.json(response)
 		}
-		//console.log("Fim Requisição")
 	}
 
 	recognize()
@@ -146,10 +161,12 @@ exports.train = function(req, res) {
 				const detections = await getFaceDetections(fotoUserPasta, options);
 
 				detections.forEach((d) => {
-					descriptors.push({
-						path: fotoUserPasta,
-						descriptor: d.descriptor
-					})
+					if (d.descriptor.length > 0) {
+						descriptors.push({
+							path: fotoUserPasta,
+							descriptor: d.descriptor
+						})
+					}
 				})
 
 				faces.push({
@@ -163,42 +180,6 @@ exports.train = function(req, res) {
 		const content = JSON.stringify(faces)
 		writeFileSync(join(dataPasta, facesArquivo), content)
 		res.send('ok')
-
-     /* await Promise.all(self.users.map(async (user) => {
-        const descriptors = []
-        await Promise.all(user.photos.map(async (photo, index) => {
-          const photoId = `${user.name}${index}`
-
-          const img = document.getElementById(photoId)
-
-          const options = {
-            landmarksEnabled: true,
-            descriptorsEnabled: true
-          }
-          const detections = await getFaceDetections({ canvas: img, options })
-          detections.forEach((d) => {
-            descriptors.push({
-              path: photo,
-              descriptor: d.descriptor
-            })
-          })
-        }))
-        faces.push({
-          user: user.name,
-          descriptors
-        })
-      }))
-
-      console.log(faces)
-      await self.$store.dispatch('face/save', faces)
-        .then(() => {
-          self.increaseProgress()
-          self.isProgressActive = false
-        })
-        .catch((e) => {
-          self.isProgressActive = false
-          console.error(e)
-        })*/
     }
 
     train()

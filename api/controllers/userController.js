@@ -2,11 +2,13 @@
 
 const mysql = require('mysql');
 const { writeFileSync } = require('fs');
+const fs = require('fs').promises;
 const { join } = require('path');
 
 const rootPasta = join(__dirname, '../../')
 const dataPasta = join(rootPasta, 'data')
 const tmpPasta = join(dataPasta, 'tmp')
+const acessosPasta = join(dataPasta, 'fotos')
 
 /*select * from tb_usuarios;
 select id_usuario from tb_usuarios;
@@ -19,7 +21,7 @@ update tb_usuarios SET cpf = 0 where id_usuario = 0; -- atualiza cpf
 delete from tb_usuarios where id_usuario = 0; */
 
 exports.getUsers = function(req, res) {
-	mysql.conexao.query('SELECT * FROM tb_usuarios', (err, rows) => {
+	mysql.conexao.query('SELECT * FROM tb_usuarios WHERE nivel_acesso IS NOT NULL', (err, rows) => {
 		if (err) throw err
 
 		res.json(rows);
@@ -28,7 +30,17 @@ exports.getUsers = function(req, res) {
 
 exports.addUser = function(req, res) {
 	var requisicao = req.body;
-	var novoUsuario = {ra: requisicao.ra, nome: requisicao.nome, senha: requisicao.senha, cpf: requisicao.cpf, nivel_acesso: requisicao.nivel_acesso, situacao: 1}
+	var novoUsuario = {
+		funcional: requisicao.funcional,
+		ra: requisicao.ra,
+		nome: requisicao.nome,
+		senha: requisicao.senha,
+		cpf: requisicao.cpf,
+		nivel_acesso: requisicao.nivel_acesso,
+		situacao: 1
+	}
+
+
 
 	mysql.conexao.query('INSERT INTO tb_usuarios SET ?',
 		novoUsuario,
@@ -57,6 +69,7 @@ exports.editUser = function(req, res) {
 	var requisicao = req.body;
 	//TODO: Mandar corpoRequisicao para validação 
 	var corpoRequisicao = {
+		funcional: requisicao.funcional,
 		ra: requisicao.ra,
 		nome: requisicao.nome,
 		senha: requisicao.senha,
@@ -79,6 +92,54 @@ exports.listaUsers = function (req, res) {
 		if (err) throw err
 
 		res.json(rows);
+	})
+}
+
+/*
+*	INICIO - CRUD
+*	Acessos
+*/
+
+exports.getAcessos = function(req, res) {
+	async function _getAcessos() {
+		var listaDeAcessos = await listarAcessos(acessosPasta);
+		console.log(listaDeAcessos)
+		res.json(listaDeAcessos)
+	}
+	
+	_getAcessos()
+}
+
+exports.addAcesso = function(req, res) {
+	var requisicao = req.body;
+	var novoUsuario = {
+		funcional: requisicao.funcional,
+		ra: requisicao.ra,
+		nome: requisicao.nome,
+		cpf: requisicao.cpf,
+		nivel_acesso: null,
+		situacao: 1
+	}
+
+	mysql.conexao.query('INSERT INTO tb_usuarios SET ?',
+		novoUsuario,
+		(err, rows) => {
+		if (err) throw err
+
+		res.json('{status: 200, message:"Acesso inserido com sucesso!"}');
+	})
+}
+
+
+exports.deleteAcesso = function(req, res) {
+	var id = req.params.userId;
+
+	mysql.conexao.query('UPDATE tb_usuarios SET situacao = 0 WHERE id_usuario = ?',
+		[id],
+		(err, result) => {
+		if (err) throw err
+
+		res.json('{status: 200, message:"Situação alterada com sucesso!"}');
 	})
 }
 
@@ -129,4 +190,41 @@ exports.salvaFoto = function (req, res) {
 			message: "Error"
 		})
 	}
+}
+
+
+/*
+*	FUNCTIONS A PARTE
+*
+*/
+
+async function listarAcessos(diretorio) {
+	let listaDeUsuarios = [];
+    let listaDeArquivos = await fs.readdir(diretorio);
+
+    for(let k in listaDeArquivos) {
+        let stat = await fs.stat(diretorio + '/' + listaDeArquivos[k]);
+        if(stat.isDirectory()) {
+            let fotos = await listarFotos(diretorio + '/' + listaDeArquivos[k])
+
+            if (fotos.length > 0) {
+            	listaDeUsuarios.push({"ra": listaDeArquivos[k], "fotos": fotos})
+            }
+        }
+    }
+
+    return listaDeUsuarios;
+}
+
+async function listarFotos(diretorio) {
+	let fotos = [];
+	let listaDeFotos = await fs.readdir(diretorio);
+    
+    for(let k in listaDeFotos) {
+        let stat = await fs.stat(diretorio);
+
+   		fotos.push(listaDeFotos[k]);
+    }
+
+    return fotos;
 }

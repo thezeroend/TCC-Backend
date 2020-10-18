@@ -24,6 +24,8 @@ module.exports = function(app) {
 
 	//User Routes
 	var userPrefix = '/user/';
+
+	//CRUD Users
 	app.route(userPrefix + 'getUsers')
 		.get(userController.getUsers);
 
@@ -38,6 +40,16 @@ module.exports = function(app) {
 
 	app.route(userPrefix + 'listaUsers')
 		.get(userController.listaUsers);
+
+	//CRUD Acessos
+	app.route(userPrefix + 'getAcessos')
+		.get(userController.getAcessos);
+
+	app.route(userPrefix + 'addAcesso')
+		.post(userController.addAcesso);
+
+	app.route(userPrefix + 'deleteAcesso/:userId')
+		.put(userController.deleteAcesso);
 
 	app.route(userPrefix + 'listaAcessos')
 		.get(userController.listaAcessos);
