@@ -53,7 +53,4 @@ module.exports = function(app) {
 
 	app.route(userPrefix + 'listaAcessos')
 		.get(userController.listaAcessos);
-
-	app.route(userPrefix + 'salvaFoto')
-		.post(userController.salvaFoto)
 };

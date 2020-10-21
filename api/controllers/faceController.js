@@ -23,7 +23,8 @@ const facesArquivo = 'faces.json'
 //Seta OPTIONS do faceapi
 faceapi.env.monkeyPatch({ Canvas, Image, ImageData });
 const TINY_FACE_OPTIONS = new faceapi.TinyFaceDetectorOptions({
-	scoreThreshold: 0.5
+	scoreThreshold: 0.5,
+	inputSize: 128
 })
 
 exports.getAll = function(req, res) {
@@ -157,7 +158,7 @@ exports.train = function(req, res) {
 			for(let j in users[k].fotos) {
 				const descriptors = [];
 				let fotoUserPasta = join(userPasta, users[k].fotos[j]);
-
+				console.log("Treinamento")
 				const detections = await getFaceDetections(fotoUserPasta, options);
 
 				detections.forEach((d) => {
@@ -169,10 +170,12 @@ exports.train = function(req, res) {
 					}
 				})
 
-				faces.push({
-					ra: users[k].ra,
-					descriptors
-				})
+				if (descriptors.length > 0) {
+					faces.push({
+						ra: users[k].ra,
+						descriptors
+					})
+				}
 			}
 		}
 

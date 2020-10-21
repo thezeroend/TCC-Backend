@@ -1,7 +1,7 @@
 'use strict';
 
 const mysql = require('mysql');
-const { writeFileSync } = require('fs');
+const { writeFileSync, existsSync, mkdirSync} = require('fs');
 const fs = require('fs').promises;
 const { join } = require('path');
 
@@ -40,14 +40,12 @@ exports.addUser = function(req, res) {
 		situacao: 1
 	}
 
-
-
 	mysql.conexao.query('INSERT INTO tb_usuarios SET ?',
 		novoUsuario,
 		(err, rows) => {
 		if (err) throw err
 
-		res.json('{status: 200, message:"Usuário inserido com sucesso!"}');
+		res.json({status: 200, message:"Usuário inserido com sucesso!"});
 	})
 }
 
@@ -60,7 +58,7 @@ exports.deleteUser = function(req, res) {
 		(err, result) => {
 		if (err) throw err
 
-		res.json('{status: 200, message:"Situação alterada com sucesso!"}');
+		res.json({status: 200, message:"Situação alterada com sucesso!"});
 	})
 }
 
@@ -83,12 +81,12 @@ exports.editUser = function(req, res) {
 		(err, result) => {
 		if (err) throw err
 
-		res.json('{status: 200, message:"Usuário editado com sucesso!"}');
+		res.json({status: 200, message:"Usuário editado com sucesso!"});
 	})
 }
 
 exports.listaUsers = function (req, res) {
-	mysql.conexao.query('SELECT funcional, ra, nome FROM tb_usuarios', (err, rows) => {
+	mysql.conexao.query('SELECT funcional, ra, nome FROM tb_usuarios WHERE nivel_acesso IS NOT NULL', (err, rows) => {
 		if (err) throw err
 
 		res.json(rows);
@@ -111,22 +109,32 @@ exports.getAcessos = function(req, res) {
 }
 
 exports.addAcesso = function(req, res) {
+	var i = 0;
+	var errors = 0;
 	var requisicao = req.body;
-	var novoUsuario = {
-		funcional: requisicao.funcional,
+	var novoAcesso = {
 		ra: requisicao.ra,
 		nome: requisicao.nome,
 		cpf: requisicao.cpf,
 		nivel_acesso: null,
 		situacao: 1
 	}
+	var fotos = req.body.fotos;
+	
+	let response = null;
+	console.log("Tamanho")
+	console.log(fotos.length)
+	fotos.forEach(ft => {
+		response = salvaFoto(ft.foto, novoAcesso.ra, i)
+		i++;
+	});
 
 	mysql.conexao.query('INSERT INTO tb_usuarios SET ?',
-		novoUsuario,
+		novoAcesso,
 		(err, rows) => {
 		if (err) throw err
 
-		res.json('{status: 200, message:"Acesso inserido com sucesso!"}');
+		res.json({"status": 200, "message":"Acesso inserido com sucesso!"});
 	})
 }
 
@@ -164,32 +172,34 @@ exports.listaAcessos = function (req, res) {
 	})
 }
 
-exports.salvaFoto = function (req, res) {
-	let foto = req.body.foto;
 
-	let tmp_filename = Date.now()+".png";
+
+function salvaFoto(foto, ra, index) {
+	var res = {};
+	let filename = ra+"_"+index+".png";
 
 	let errors = 0;
+	
+	const dir = join(acessosPasta, ra)
+	const file_path = join(dir, filename)
 
-	const tmpFile = join(tmpPasta, tmp_filename)
+	if (!existsSync(dir)) {
+		mkdirSync(dir, function (err) {
+			errors++;
+		})
+	}
 
-	foto = foto.replace(/^data:image\/png;base64,/, "")
-
-	writeFileSync(tmpFile, foto, {encoding: 'base64'}, function (err) {
+	writeFileSync(file_path, foto, {encoding: 'base64'} ,  function (err) {
 		errors++;
 	})
 
 	if (errors == 0) {
-		res.json({
-			status: 200,
-			nome_temp: tmp_filename
-		})
+		res = { status: 200 }
 	} else {
-		res.json({
-			status:403,
-			message: "Error"
-		})
-	}
+		res = { status: 403 }
+	} 
+
+	return res
 }
 
 
