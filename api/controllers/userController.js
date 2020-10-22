@@ -1,8 +1,9 @@
 'use strict';
 
 const mysql = require('mysql');
-const { writeFileSync, existsSync, mkdirSync} = require('fs');
+const { writeFileSync, existsSync, mkdirSync, readFileSync, unlinkSync} = require('fs');
 const fs = require('fs').promises;
+const util = require('util')
 const { join } = require('path');
 
 const rootPasta = join(__dirname, '../../')
@@ -62,18 +63,31 @@ exports.deleteUser = function(req, res) {
 	})
 }
 
+exports.getUser = function(req, res) {
+	var id = req.params.userId;
+	console.log(id)
+	mysql.conexao.query('SELECT funcional, nome, cpf, nivel_acesso, situacao  FROM tb_usuarios WHERE id_usuario = "'+id+'" AND nivel_acesso IS NOT NULL', (err, rows) => {
+		if (err) throw err
+
+		if (rows.length > 0) {
+			res.json(rows);
+		} else {
+			res.json({'status': 404, 'message': 'Usuário não encontrado'});
+		}
+	})
+}
+
 exports.editUser = function(req, res) {
 	var id = req.params.userId;
 	var requisicao = req.body;
 	//TODO: Mandar corpoRequisicao para validação 
 	var corpoRequisicao = {
 		funcional: requisicao.funcional,
-		ra: requisicao.ra,
 		nome: requisicao.nome,
 		senha: requisicao.senha,
 		cpf: requisicao.cpf,
 		nivel_acesso: requisicao.nivel_acesso,
-		situacao: 1
+		situacao: requisicao.situacao
 	}
 
 	mysql.conexao.query('UPDATE tb_usuarios SET ? WHERE id_usuario = ?',
@@ -86,7 +100,7 @@ exports.editUser = function(req, res) {
 }
 
 exports.listaUsers = function (req, res) {
-	mysql.conexao.query('SELECT funcional, ra, nome FROM tb_usuarios WHERE nivel_acesso IS NOT NULL', (err, rows) => {
+	mysql.conexao.query('SELECT id_usuario, funcional, nome FROM tb_usuarios WHERE nivel_acesso IS NOT NULL', (err, rows) => {
 		if (err) throw err
 
 		res.json(rows);
@@ -101,15 +115,29 @@ exports.listaUsers = function (req, res) {
 exports.getAcessos = function(req, res) {
 	async function _getAcessos() {
 		var listaDeAcessos = await listarAcessos(acessosPasta);
-		console.log(listaDeAcessos)
-		res.json(listaDeAcessos)
+		var response = [];
+
+		for (var i in listaDeAcessos) {
+			await new Promise((res1, rej1) => {
+				mysql.conexao.query('SELECT id_usuario, ra, nome, cpf FROM tb_usuarios WHERE ra LIKE "' + listaDeAcessos[i].ra + '" AND nivel_acesso IS NULL;', (err, rows) => {
+					if (err) throw err
+
+					if (rows.length > 0) {
+						response.push(rows[0]);
+					}
+					res1(rows)
+				});
+			});
+		}
+
+		res.json(response);
 	}
 	
 	_getAcessos()
 }
 
 exports.addAcesso = function(req, res) {
-	var i = 0;
+	var i = 0
 	var errors = 0;
 	var requisicao = req.body;
 	var novoAcesso = {
@@ -122,8 +150,6 @@ exports.addAcesso = function(req, res) {
 	var fotos = req.body.fotos;
 	
 	let response = null;
-	console.log("Tamanho")
-	console.log(fotos.length)
 	fotos.forEach(ft => {
 		response = salvaFoto(ft.foto, novoAcesso.ra, i)
 		i++;
@@ -138,6 +164,78 @@ exports.addAcesso = function(req, res) {
 	})
 }
 
+exports.getAcesso = function(req, res) {
+	async function _getAcesso() {
+		var id = req.params.userId;
+		var response = [];
+
+		await new Promise((res1, rej1) => {
+			mysql.conexao.query('SELECT id_usuario, ra, nome, cpf, situacao FROM tb_usuarios WHERE id_usuario = "'+ id +'" AND nivel_acesso IS NULL', (err, rows) => {
+				if (err) throw err
+
+				if (rows.length > 0) {
+					response[0] = {
+						'id_usuario': rows[0].id_usuario,
+						'ra': rows[0].ra,
+						'nomeCompleto': rows[0].nome,
+						'cpf': rows[0].cpf,
+						'situacao': rows[0].situacao,
+						'fotos' : []
+					}
+				}
+				res1(rows)
+			})
+		});
+
+		if (response.length > 0) {
+			const acessoPasta = join(acessosPasta, response[0].ra)
+			let fotos = await listarFotos(acessoPasta)
+			
+			for (var i in fotos) {
+				let foto = join(acessoPasta, fotos[i])
+
+				response[0].fotos.push(base64_encode(foto));
+			}
+
+			res.json(response);
+		} else {
+			res.json({'status': 404, 'message': 'Acesso não encontrado'});
+		}
+	}
+
+	_getAcesso()
+}
+
+exports.editAcesso = function(req, res) {
+	var id = req.params.userId;
+	var requisicao = req.body;
+	//TODO: Mandar corpoRequisicao para validação 
+	var corpoRequisicao = {
+		ra: requisicao.ra,
+		nome: requisicao.nome,
+		cpf: requisicao.cpf,
+		situacao: requisicao.situacao
+	}
+
+	var fotos = req.body.fotos;
+	let response = null;
+
+	const dir = join(acessosPasta, ra);
+	unlinkSync(dir);
+
+	fotos.forEach(ft => {
+		response = salvaFoto(ft.foto, novoAcesso.ra, i)
+		i++;
+	});
+
+	mysql.conexao.query('UPDATE tb_usuarios SET ? WHERE id_usuario = "'+ id +'"',
+		[corpoRequisicao],
+		(err, result) => {
+		if (err) throw err
+
+		res.json({status: 200, message:"Usuário editado com sucesso!"});
+	})
+}
 
 exports.deleteAcesso = function(req, res) {
 	var id = req.params.userId;
@@ -172,7 +270,10 @@ exports.listaAcessos = function (req, res) {
 	})
 }
 
-
+/*
+*	FUNCTIONS A PARTE
+*
+*/
 
 function salvaFoto(foto, ra, index) {
 	var res = {};
@@ -201,12 +302,6 @@ function salvaFoto(foto, ra, index) {
 
 	return res
 }
-
-
-/*
-*	FUNCTIONS A PARTE
-*
-*/
 
 async function listarAcessos(diretorio) {
 	let listaDeUsuarios = [];
@@ -237,4 +332,27 @@ async function listarFotos(diretorio) {
     }
 
     return fotos;
+}
+
+async function getDados(ra) {
+	try{
+		var retorno = null;
+		await mysql.conexao.query('SELECT id_usuario, ra, nome, cpf FROM tb_usuarios WHERE ra LIKE "' + ra + '" AND nivel_acesso IS NULL;', (err, rows) => {
+			if (err) throw err
+
+			console.log(rows);	
+
+			return "rows";
+		})
+	} catch (err) {
+		console.log(err)
+	}
+	
+}	
+
+function base64_encode(file) {
+    // read binary data
+    var bitmap = readFileSync(file);
+    // convert binary data to base64 encoded string
+    return new Buffer.from(bitmap).toString('base64');
 }

@@ -36,6 +36,7 @@ module.exports = function(app) {
 		.put(userController.deleteUser);
 
 	app.route(userPrefix + 'editUser/:userId')
+		.get(userController.getUser)
 		.put(userController.editUser);
 
 	app.route(userPrefix + 'listaUsers')
@@ -47,6 +48,10 @@ module.exports = function(app) {
 
 	app.route(userPrefix + 'addAcesso')
 		.post(userController.addAcesso);
+
+	app.route(userPrefix + 'editAcesso/:userId')
+		.get(userController.getAcesso)
+		.put(userController.editAcesso);
 
 	app.route(userPrefix + 'deleteAcesso/:userId')
 		.put(userController.deleteAcesso);
