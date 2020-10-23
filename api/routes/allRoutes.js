@@ -3,7 +3,11 @@
 module.exports = function(app) {
 	var faceController = require('../controllers/faceController');
 	var userController = require('../controllers/userController');
+	var authController = require('../controllers/authController');
 
+	//Auth Route
+	app.route('/auth')
+		.post(authController.login)
 	//Face Routes
 	app.route('/face/getAll')
 	    .get(faceController.getAll);

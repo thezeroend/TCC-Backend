@@ -1,7 +1,7 @@
 'use strict';
 
 const mysql = require('mysql');
-const { writeFileSync, existsSync, mkdirSync, readFileSync, unlinkSync} = require('fs');
+const { writeFileSync, existsSync, mkdirSync, readFileSync, unlinkSync, rmdirSync} = require('fs');
 const fs = require('fs').promises;
 const util = require('util')
 const { join } = require('path');
@@ -33,7 +33,7 @@ exports.addUser = function(req, res) {
 	var requisicao = req.body;
 	var novoUsuario = {
 		funcional: requisicao.funcional,
-		ra: requisicao.ra,
+		ra: requisicao.ra.toUpperCase(),
 		nome: requisicao.nome,
 		senha: requisicao.senha,
 		cpf: requisicao.cpf,
@@ -53,20 +53,31 @@ exports.addUser = function(req, res) {
 
 exports.deleteUser = function(req, res) {
 	var id = req.params.userId;
+	var requisicao = req.body;
 
-	mysql.conexao.query('UPDATE tb_usuarios SET situacao = 0 WHERE id_usuario = ?',
-		[id],
-		(err, result) => {
-		if (err) throw err
+	if (requisicao.situacao == 1) {
+		mysql.conexao.query('UPDATE tb_usuarios SET situacao = 0 WHERE id_usuario = ?',
+			[id],
+			(err, result) => {
+			if (err) throw err
 
-		res.json({status: 200, message:"Situação alterada com sucesso!"});
-	})
+			res.json({status: 200, message:"Situação alterada com sucesso!"});
+		})
+	} else {
+		mysql.conexao.query('UPDATE tb_usuarios SET situacao = 1 WHERE id_usuario = ?',
+			[id],
+			(err, result) => {
+			if (err) throw err
+
+			res.json({status: 200, message:"Situação alterada com sucesso!"});
+		})
+	}
 }
 
 exports.getUser = function(req, res) {
 	var id = req.params.userId;
-	console.log(id)
-	mysql.conexao.query('SELECT funcional, nome, cpf, nivel_acesso, situacao  FROM tb_usuarios WHERE id_usuario = "'+id+'" AND nivel_acesso IS NOT NULL', (err, rows) => {
+
+	mysql.conexao.query('SELECT id_usuario, funcional, nome, cpf, nivel_acesso, situacao  FROM tb_usuarios WHERE id_usuario = "'+id+'" AND nivel_acesso IS NOT NULL', (err, rows) => {
 		if (err) throw err
 
 		if (rows.length > 0) {
@@ -80,23 +91,45 @@ exports.getUser = function(req, res) {
 exports.editUser = function(req, res) {
 	var id = req.params.userId;
 	var requisicao = req.body;
-	//TODO: Mandar corpoRequisicao para validação 
-	var corpoRequisicao = {
-		funcional: requisicao.funcional,
-		nome: requisicao.nome,
-		senha: requisicao.senha,
-		cpf: requisicao.cpf,
-		nivel_acesso: requisicao.nivel_acesso,
-		situacao: requisicao.situacao
+	var errors = 0;
+	var message = '';
+
+	if (requisicao.senha != requisicao.senha_confirma) {
+		errors++;
+		message = "Senha não confere"
 	}
 
-	mysql.conexao.query('UPDATE tb_usuarios SET ? WHERE id_usuario = ?',
-		[corpoRequisicao, id],
-		(err, result) => {
-		if (err) throw err
+	if (errors == 0) {
+		var corpoRequisicao = {};
+		if (requisicao.senha == '' || requisicao.senha == null) {
+			corpoRequisicao = {
+				funcional: requisicao.funcional,
+				nome: requisicao.nome,
+				cpf: requisicao.cpf,
+				nivel_acesso: requisicao.nivel_acesso,
+				situacao: requisicao.situacao
+			}
+		} else {
+			corpoRequisicao = {
+				funcional: requisicao.funcional,
+				nome: requisicao.nome,
+				senha: requisicao.senha,
+				cpf: requisicao.cpf,
+				nivel_acesso: requisicao.nivel_acesso,
+				situacao: requisicao.situacao
+			}
+		}
 
-		res.json({status: 200, message:"Usuário editado com sucesso!"});
-	})
+		mysql.conexao.query('UPDATE tb_usuarios SET ? WHERE id_usuario = ?',
+			[corpoRequisicao, id],
+			(err, result) => {
+			if (err) throw err
+
+			res.json({status: 200, message:"Usuário editado com sucesso!"});
+		})
+	} else {
+		res.json({status: 400, message: message});
+	}
 }
 
 exports.listaUsers = function (req, res) {
@@ -141,7 +174,7 @@ exports.addAcesso = function(req, res) {
 	var errors = 0;
 	var requisicao = req.body;
 	var novoAcesso = {
-		ra: requisicao.ra,
+		ra: requisicao.ra.toUpperCase(),
 		nome: requisicao.nome,
 		cpf: requisicao.cpf,
 		nivel_acesso: null,
@@ -151,7 +184,7 @@ exports.addAcesso = function(req, res) {
 	
 	let response = null;
 	fotos.forEach(ft => {
-		response = salvaFoto(ft.foto, novoAcesso.ra, i)
+		response = salvaFoto(ft, novoAcesso.ra, i)
 		i++;
 	});
 
@@ -207,46 +240,69 @@ exports.getAcesso = function(req, res) {
 }
 
 exports.editAcesso = function(req, res) {
-	var id = req.params.userId;
-	var requisicao = req.body;
-	//TODO: Mandar corpoRequisicao para validação 
-	var corpoRequisicao = {
-		ra: requisicao.ra,
-		nome: requisicao.nome,
-		cpf: requisicao.cpf,
-		situacao: requisicao.situacao
+	async function _editAcesso() {
+		var id = req.params.userId;
+		var i = 0;
+		var requisicao = req.body;
+		//TODO: Mandar corpoRequisicao para validação 
+		var corpoRequisicao = {
+			ra: requisicao.ra.toUpperCase(),
+			nome: requisicao.nome,
+			cpf: requisicao.cpf,
+			situacao: requisicao.situacao
+		}
+
+		var fotos = req.body.fotos;
+		let response = null;
+
+		const acessoPasta = join(acessosPasta, corpoRequisicao.ra);
+
+		const fotosAtuais = await listarFotos(acessoPasta)
+
+		fotosAtuais.forEach(fa => {
+			let dirFoto = join(acessoPasta, fa);
+
+			unlinkSync(dirFoto)
+		})
+
+		fotos.forEach(ft => {
+			response = salvaFoto(ft, corpoRequisicao.ra, i)
+			i++;
+		});
+
+		mysql.conexao.query('UPDATE tb_usuarios SET ? WHERE id_usuario = "'+ id +'"',
+			[corpoRequisicao],
+			(err, result) => {
+			if (err) throw err
+
+			res.json({status: 200, message:"Usuário editado com sucesso!"});
+		})
 	}
 
-	var fotos = req.body.fotos;
-	let response = null;
-
-	const dir = join(acessosPasta, ra);
-	unlinkSync(dir);
-
-	fotos.forEach(ft => {
-		response = salvaFoto(ft.foto, novoAcesso.ra, i)
-		i++;
-	});
-
-	mysql.conexao.query('UPDATE tb_usuarios SET ? WHERE id_usuario = "'+ id +'"',
-		[corpoRequisicao],
-		(err, result) => {
-		if (err) throw err
-
-		res.json({status: 200, message:"Usuário editado com sucesso!"});
-	})
+	_editAcesso()
 }
 
 exports.deleteAcesso = function(req, res) {
 	var id = req.params.userId;
+	var requisicao = req.body;
 
-	mysql.conexao.query('UPDATE tb_usuarios SET situacao = 0 WHERE id_usuario = ?',
-		[id],
-		(err, result) => {
-		if (err) throw err
+	if (requisicao.situacao == 1) {
+		mysql.conexao.query('UPDATE tb_usuarios SET situacao = 0 WHERE id_usuario = ?',
+			[id],
+			(err, result) => {
+			if (err) throw err
 
-		res.json('{status: 200, message:"Situação alterada com sucesso!"}');
-	})
+			res.json({status: 200, message:"Situação alterada com sucesso!"});
+		})
+	} else {
+		mysql.conexao.query('UPDATE tb_usuarios SET situacao = 1 WHERE id_usuario = ?',
+			[id],
+			(err, result) => {
+			if (err) throw err
+
+			res.json({status: 200, message:"Situação alterada com sucesso!"});
+		})
+	}
 }
 
 exports.listaAcessos = function (req, res) {
@@ -324,7 +380,7 @@ async function listarAcessos(diretorio) {
 async function listarFotos(diretorio) {
 	let fotos = [];
 	let listaDeFotos = await fs.readdir(diretorio);
-    
+
     for(let k in listaDeFotos) {
         let stat = await fs.stat(diretorio);
 
@@ -338,9 +394,7 @@ async function getDados(ra) {
 	try{
 		var retorno = null;
 		await mysql.conexao.query('SELECT id_usuario, ra, nome, cpf FROM tb_usuarios WHERE ra LIKE "' + ra + '" AND nivel_acesso IS NULL;', (err, rows) => {
-			if (err) throw err
-
-			console.log(rows);	
+			if (err) throw err	
 
 			return "rows";
 		})

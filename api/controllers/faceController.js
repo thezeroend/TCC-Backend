@@ -68,7 +68,6 @@ exports.recognize = function(req, res) {
 				.withFaceLandmarks()
 				.withFaceDescriptors()
 
-			console.log(resultsRef.length)
 			if (resultsRef.length > 0) {
 				let resultadoFinal = null;
 
@@ -93,35 +92,30 @@ exports.recognize = function(req, res) {
 							"possibilidade": bestMatch._distance
 						});
 					}
-					/*  else {
-						possiveis.push({
-							"ra": fd.ra,
-							"nome": "Nome de Teste",
-							"label": false,
-							"possibilidade": bestMatch._distance
-						});
-					} */
 				})
 
-				console.log(possiveis)
 				possiveis.forEach(ps => {
 					if (ps.possibilidade == 0 || ps.possibilidade >= 0.3) {
 						resultadoFinal = ps;
 					}
 				})
 
-				mysql.conexao.query('SELECT nome FROM tb_usuarios WHERE ra = "'+ resultadoFinal.ra +'"', 
-					(err, rows) => {
-					if (err) throw err
+				if (resultadoFinal == null) {
+					res.json({status: 400, message: 'Erro no reconhecimento'})
+				} else {
+					mysql.conexao.query('SELECT nome FROM tb_usuarios WHERE ra = "'+ resultadoFinal.ra +'"', 
+						(err, rows) => {
+						if (err) throw err
 
-					resultadoFinal.nome = rows[0].nome;
-					console.log("Dentro da consulta")
-					console.log(resultadoFinal)
-					res.json(resultadoFinal)	
-				})
+						if (rows.length > 0) {
+							resultadoFinal.nome = rows[0].nome;
+							res.json(resultadoFinal)	
+						} else {
+							res.json({status: 400, message: 'Erro no reconhecimento'})
+						}
+					})
+				}
 			} else {
-				console.log("teste")
-
 				let response = {
 					status: 404,
 					message: 'Não foi possivel encontrar rosto'
@@ -153,7 +147,7 @@ exports.train = function(req, res) {
 		let users = await listarUsuarios(fotosPasta)
 
 		for(let k in users) {
-			const userPasta = join(fotosPasta, users[k].ra);
+			const userPasta = join(fotosPasta, users[k].ra.toUpperCase());
 
 			for(let j in users[k].fotos) {
 				const descriptors = [];
@@ -186,39 +180,6 @@ exports.train = function(req, res) {
     }
 
     train()
-}
-
-exports.teste = function (req, res) {
-	async function run() {
-		const referenceImage = await canvas.loadImage(REFERENCE_IMAGE)
-		const queryImage = await canvas.loadImage(QUERY_IMAGE)
-		console.log("Deu loading nas imagens")
-
-		const resultsRef = await faceapi.detectAllFaces(referenceImage, TINY_FACE_OPTIONS)
-			.withFaceLandmarks()
-			.withFaceDescriptors()
-
-		console.log("Carregou a 1 imagen")
-
-		const resultsQuery = await faceapi.detectAllFaces(queryImage, TINY_FACE_OPTIONS)
-			.withFaceLandmarks()
-			.withFaceDescriptors()
-
-		console.log("Carregou a 2 imagen")
-
-		const faceMatcher = new faceapi.FaceMatcher(resultsRef)
-
-		console.log("Primeira Foto Dados: " + JSON.stringify(faceMatcher));
-
-		const queryBestMatch = resultsQuery.map(res => {
-			const bestMatch = faceMatcher.findBestMatch(res.descriptor)
-			//console.log("Comparação com a segunda: " + JSON.stringify(bestMatch))
-		})
-
-		res.json("Sucesso");
-	}
-
-	run()
 }
 
 async function getFaceDetections (fotoDir, options) {
