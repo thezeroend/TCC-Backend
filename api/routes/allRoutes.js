@@ -7,24 +7,18 @@ module.exports = function(app) {
 
 	//Auth Route
 	app.route('/auth')
-		.post(authController.login)
+		.post(authController.login);
 	//Face Routes
 	app.route('/face/getAll')
 	    .get(faceController.getAll);
-	    //.post(faceController.get_all)
-	    //.put(faceController.get_all)
-	    //.delete(faceController.get_all);
 	app.route('/face/save')
-		.post(faceController.save)
+		.post(faceController.save);
 
 	app.route('/face/train')
-		.post(faceController.train)
+		.post(faceController.train);
 
 	app.route('/face/recognize')
-		.post(faceController.recognize)
-
-	app.route('/face/teste')
-		.get(faceController.teste)
+		.post(faceController.recognize);
 
 	//User Routes
 	var userPrefix = '/user/';
