@@ -6,8 +6,8 @@ const fs = require('fs').promises;
 const util = require('util')
 const { join } = require('path');
 
-const rootPasta = join(__dirname, '../../')
-const dataPasta = join(rootPasta, 'data')
+//const rootPasta = join(__dirname, '../../')
+const dataPasta = join('./', 'data')
 const tmpPasta = join(dataPasta, 'tmp')
 const acessosPasta = join(dataPasta, 'fotos')
 
@@ -360,6 +360,7 @@ function salvaFoto(foto, ra, index) {
 }
 
 async function listarAcessos(diretorio) {
+	console.log(diretorio)
 	let listaDeUsuarios = [];
     let listaDeArquivos = await fs.readdir(diretorio);
 
