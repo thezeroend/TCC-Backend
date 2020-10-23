@@ -6,8 +6,8 @@ const fs = require('fs').promises;
 const util = require('util')
 const { join } = require('path');
 
-//const rootPasta = join(__dirname, '../../')
-const dataPasta = join('./', 'data')
+const rootPasta = join(__dirname, '../../')
+const dataPasta = join(rootPasta, 'data')
 const tmpPasta = join(dataPasta, 'tmp')
 const acessosPasta = join(dataPasta, 'fotos')
 
