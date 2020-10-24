@@ -11,16 +11,6 @@ const dataPasta = join(rootPasta, 'data')
 const tmpPasta = join(dataPasta, 'tmp')
 const acessosPasta = join(dataPasta, 'fotos')
 
-/*select * from tb_usuarios;
-select id_usuario from tb_usuarios;
-insert into tb_usuarios (id_usuario, funcional, senha, nivel_acesso, cpf) values (0, '', '', 0, 0);
-update tb_usuarios SET funcional = '', senha = '', nivel_acesso = 0, cpf = 0 where id_usuario = 0; -- atualizar todos os campos
-update tb_usuarios SET funcional = '' where id_usuario = 0; -- atualizar funcional
-update tb_usuarios SET senha = '' where id_usuario = 0; -- atualizar senha
-update tb_usuarios SET nivel_acesso = 0 where id_usuario = 0; -- atualiza nivel de acesso
-update tb_usuarios SET cpf = 0 where id_usuario = 0; -- atualiza cpf
-delete from tb_usuarios where id_usuario = 0; */
-
 exports.getUsers = function(req, res) {
 	mysql.conexao.query('SELECT * FROM tb_usuarios WHERE nivel_acesso IS NOT NULL', (err, rows) => {
 		if (err) throw err

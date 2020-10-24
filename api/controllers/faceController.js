@@ -9,10 +9,6 @@ const { join } = require('path');
 
 const { Canvas, createCanvas, Image, ImageData } = canvas;
 
-//Imagens de teste
-const REFERENCE_IMAGE = './data/fotos_teste/matheus.jpg'
-const QUERY_IMAGE = './data/fotos_teste/salomao.jpg'
-
 //Pasta 
 const rootPasta = join(__dirname, '../../')
 const dataPasta = join(rootPasta, 'data')
@@ -198,12 +194,6 @@ async function getFaceDetections (fotoDir, options) {
     detections = await detections
 
     return detections
-}
-
-async function test() {
-    let arquivos = await listarUsuarios('./data/fotos'); // coloque o caminho do seu diretorio
-    console.log(arquivos);
-    return arquivos;
 }
 
 async function listarUsuarios(diretorio) {
