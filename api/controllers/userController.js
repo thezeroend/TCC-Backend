@@ -34,7 +34,20 @@ exports.addUser = async function(req, res) {
 	var errors = 0;
 
 	await new Promise((res1, rej1) => {
-		mysql.conexao.query('SELECT funcional FROM tb_usuarios WHERE funcional = "'+ novoUsuario.funcional +'"', (err, rows) => {
+		mysql.conexao.query('SELECT funcional FROM tb_usuarios WHERE funcional = "'+ novoUsuario.funcional +'" AND nivel_acesso IS NOT NULL', (err, rows) => {
+			if (err) {
+				res.json({status: 400, message:"Erro ao inserir usuário tente novamente!"});
+			} else {
+				if (rows.length > 0) {
+					errors++;
+				}
+			}
+			res1(rows)
+		})
+	});
+
+	await new Promise((res1, rej1) => {
+		mysql.conexao.query('SELECT cpf FROM tb_usuarios WHERE cpf = "'+ novoUsuario.cpf +'" AND nivel_acesso IS NOT NULL', (err, rows) => {
 			if (err) {
 				res.json({status: 400, message:"Erro ao inserir usuário tente novamente!"});
 			} else {
@@ -47,7 +60,7 @@ exports.addUser = async function(req, res) {
 	});
 
 	if (errors != 0) {
-		res.json({status: 400, message:"Usuário já existe no banco!"});
+		res.json({status: 400, message:"Funcional ou CPF já existe no banco!"});
 	} else {
 		mysql.conexao.query('INSERT INTO tb_usuarios SET ?',
 			novoUsuario,
@@ -193,9 +206,22 @@ exports.addAcesso = async function(req, res) {
 	var errors = 0;
 
 	await new Promise((res1, rej1) => {
-		mysql.conexao.query('SELECT ra FROM tb_usuarios WHERE ra = "'+ novoAcesso.ra +'"', (err, rows) => {
+		mysql.conexao.query('SELECT ra FROM tb_usuarios WHERE ra = "'+ novoAcesso.ra +'" AND nivel_acesso IS NULL', (err, rows) => {
 			if (err) {
-				res.json({status: 400, message:"Erro ao inserir usuário tente novamente!"});
+				res.json({status: 400, message:"Erro ao inserir acesso tente novamente!"});
+			} else {
+				if (rows.length > 0) {
+					errors++;
+				}
+			}
+			res1(rows)
+		})
+	});
+
+	await new Promise((res1, rej1) => {
+		mysql.conexao.query('SELECT cpf FROM tb_usuarios WHERE cpf = "'+ novoAcesso.cpf +'" AND nivel_acesso IS NULL', (err, rows) => {
+			if (err) {
+				res.json({status: 400, message:"Erro ao inserir acesso tente novamente!"});
 			} else {
 				if (rows.length > 0) {
 					errors++;
@@ -222,7 +248,7 @@ exports.addAcesso = async function(req, res) {
 			res.json({status: 200, message:"Acesso inserido com sucesso!"});
 		})
 	} else {
-		res.json({status: 400, message:"Acesso já cadastrado no sistema!"});
+		res.json({status: 400, message:"RA/CPF já cadastrado no sistema!"});
 	}
 }
 

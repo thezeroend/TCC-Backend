@@ -99,15 +99,21 @@ exports.recognize = function(req, res) {
 				if (resultadoFinal == null) {
 					res.json({status: 400, message: 'Erro no reconhecimento'})
 				} else {
-					mysql.conexao.query('SELECT nome FROM tb_usuarios WHERE ra = "'+ resultadoFinal.ra +'"', 
+					mysql.conexao.query('SELECT nome, situacao FROM tb_usuarios WHERE ra = "'+ resultadoFinal.ra +'"', 
 						(err, rows) => {
-						if (err) throw err
-
-						if (rows.length > 0) {
-							resultadoFinal.nome = rows[0].nome;
-							res.json(resultadoFinal)	
+						if (err) {
+							res.json({status: 400, message: 'Requisição invalida!'})
 						} else {
-							res.json({status: 400, message: 'Erro no reconhecimento'})
+							if (rows.length > 0) {
+								if (rows[0].situacao == 0) {
+									res.json({status: 401, message: 'Acesso Bloqueado'})
+								} else {
+									resultadoFinal.nome = rows[0].nome;
+									res.json(resultadoFinal)
+								}
+							} else {
+								res.json({status: 400, message: 'Erro no reconhecimento'})
+							}
 						}
 					})
 				}
