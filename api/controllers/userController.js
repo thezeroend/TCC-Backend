@@ -13,33 +13,53 @@ const acessosPasta = join(dataPasta, 'fotos')
 
 exports.getUsers = function(req, res) {
 	mysql.conexao.query('SELECT * FROM tb_usuarios WHERE nivel_acesso IS NOT NULL', (err, rows) => {
-		if (err) throw err
-
-		res.json(rows);
+		if (err) {
+			res.json({status: 400, message:"Falha ao encontrar usuários!"});
+		} else {
+			res.json(rows);
+		}
 	})
 }
 
-exports.addUser = function(req, res) {
+exports.addUser = async function(req, res) {
 	var requisicao = req.body;
 	var novoUsuario = {
-		funcional: requisicao.funcional,
-		ra: requisicao.ra.toUpperCase(),
+		funcional: requisicao.funcional.toUpperCase(),
 		nome: requisicao.nome,
 		senha: requisicao.senha,
 		cpf: requisicao.cpf,
 		nivel_acesso: requisicao.nivel_acesso,
 		situacao: 1
 	}
+	var errors = 0;
 
-	mysql.conexao.query('INSERT INTO tb_usuarios SET ?',
-		novoUsuario,
-		(err, rows) => {
-		if (err) throw err
+	await new Promise((res1, rej1) => {
+		mysql.conexao.query('SELECT funcional FROM tb_usuarios WHERE funcional = "'+ novoUsuario.funcional +'"', (err, rows) => {
+			if (err) {
+				res.json({status: 400, message:"Erro ao inserir usuário tente novamente!"});
+			} else {
+				if (rows.length > 0) {
+					errors++;
+				}
+			}
+			res1(rows)
+		})
+	});
 
-		res.json({status: 200, message:"Usuário inserido com sucesso!"});
-	})
+	if (errors != 0) {
+		res.json({status: 400, message:"Usuário já existe no banco!"});
+	} else {
+		mysql.conexao.query('INSERT INTO tb_usuarios SET ?',
+			novoUsuario,
+			(err, rows) => {
+			if (err) {
+				res.json({status: 400, message:"Erro ao inserir usuário tente novamente!"});
+			} else {
+				res.json({status: 200, message:"Usuário inserido com sucesso!"});
+			}
+		})
+	}
 }
-
 
 exports.deleteUser = function(req, res) {
 	var id = req.params.userId;
@@ -159,7 +179,7 @@ exports.getAcessos = function(req, res) {
 	_getAcessos()
 }
 
-exports.addAcesso = function(req, res) {
+exports.addAcesso = async function(req, res) {
 	var i = 0
 	var errors = 0;
 	var requisicao = req.body;
@@ -170,21 +190,40 @@ exports.addAcesso = function(req, res) {
 		nivel_acesso: null,
 		situacao: 1
 	}
-	var fotos = req.body.fotos;
-	
-	let response = null;
-	fotos.forEach(ft => {
-		response = salvaFoto(ft, novoAcesso.ra, i)
-		i++;
+	var errors = 0;
+
+	await new Promise((res1, rej1) => {
+		mysql.conexao.query('SELECT ra FROM tb_usuarios WHERE ra = "'+ novoAcesso.ra +'"', (err, rows) => {
+			if (err) {
+				res.json({status: 400, message:"Erro ao inserir usuário tente novamente!"});
+			} else {
+				if (rows.length > 0) {
+					errors++;
+				}
+			}
+			res1(rows)
+		})
 	});
 
-	mysql.conexao.query('INSERT INTO tb_usuarios SET ?',
-		novoAcesso,
-		(err, rows) => {
-		if (err) throw err
+	if (errors == 0) {
+		var fotos = req.body.fotos;
+		let response = null;
 
-		res.json({"status": 200, "message":"Acesso inserido com sucesso!"});
-	})
+		fotos.forEach(ft => {
+			response = salvaFoto(ft, novoAcesso.ra, i)
+			i++;
+		});
+
+		mysql.conexao.query('INSERT INTO tb_usuarios SET ?',
+			novoAcesso,
+			(err, rows) => {
+			if (err) throw err
+
+			res.json({status: 200, message:"Acesso inserido com sucesso!"});
+		})
+	} else {
+		res.json({status: 400, message:"Acesso já cadastrado no sistema!"});
+	}
 }
 
 exports.getAcesso = function(req, res) {
