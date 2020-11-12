@@ -91,7 +91,7 @@ exports.recognize = function(req, res) {
 				})
 
 				possiveis.forEach(ps => {
-					if (ps.possibilidade == 0 || ps.possibilidade >= 0.45) {
+					if (ps.possibilidade == 0 || ps.possibilidade >= 0.75) {
 						resultadoFinal = ps;
 					}
 				})
